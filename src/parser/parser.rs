@@ -1,4 +1,4 @@
-use crate::{Define, Expr, OP, Stmt, Token};
+use crate::{Define, Expr, OP, Stmt, Token, Type};
 
 pub struct Parser {
     pub tokens: Vec<Token>, // динамический массив токенов
@@ -80,13 +80,37 @@ impl Parser {
                     value: expr,
                 }))
             }
+            Some(Token::Colon) => {
+                self.advance();
+                let typename = self.parse_type();
+
+                match self.current() {
+                    Some(Token::Assign) => {
+                        self.advance(); // ← ВОТ ЭТОГО НЕ ХВАТАЕТ
+
+                        let expr = self.parse_expr();
+
+                        Stmt::Define(Box::new(Define::DefVar {
+                            names: vec![name],
+                            types: vec![typename],
+                            value: Some(expr),
+                        }))
+                    }
+
+                    _ => Stmt::Define(Box::new(Define::DefVar {
+                        names: vec![name],
+                        types: vec![typename],
+                        value: None,
+                    })),
+                }
+            }
             Some(Token::ColonColon) => {
                 self.advance();
                 match self.current() {
                     Some(Token::Proc) => self.parse_proc(name),
-                    _ => { 
-                        let expr = self.parse_expr(); 
-                        Stmt::Define(Box::new(Define::Const { name, value: expr })) 
+                    _ => {
+                        let expr = self.parse_expr();
+                        Stmt::Define(Box::new(Define::Const { name, value: expr }))
                     }
                 }
             }
@@ -95,10 +119,26 @@ impl Parser {
         }
     }
 
+    fn parse_type(&mut self) -> Type {
+        match self.current() {
+            Some(Token::Caret) => {
+                self.advance();
+                let inner = self.parse_type();
+                Type::Ref(Box::new(inner))
+            }
+            Some(Token::Ident(name)) => {
+                let name = name.clone();
+                self.advance();
+                Type::Name(name)
+            }
+            Some(tok) => panic!("unexpected token in type: {:?}", tok),
+            None => panic!("unexpected EOF"),
+        }
+    }
+
     fn parse_proc(&mut self, name: String) -> Stmt {
-        
         panic!();
-    } 
+    }
 
     pub fn parse_stmt(&mut self) -> Stmt {
         match self.current() {

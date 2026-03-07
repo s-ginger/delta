@@ -39,11 +39,11 @@ pub enum Define {
     DefVar {
         names: Vec<String>,
         types: Vec<Type>,
-        value: Expr,
+        value: Option<Expr>,
     },
     Procedure {
         name: String,
-        params: Vec<Expr>,
+        params: Box<Define>,
         returntype: Vec<Expr>,
         body: Stmt,
     },
