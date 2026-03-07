@@ -75,13 +75,30 @@ impl Parser {
             Some(Token::Assign) => {
                 self.advance();
                 let expr = self.parse_expr();
-                Stmt::Define(Box::new(Define::Assign { name: name, value: expr }))
-            },
-            
+                Stmt::Define(Box::new(Define::Assign {
+                    name: name,
+                    value: expr,
+                }))
+            }
+            Some(Token::ColonColon) => {
+                self.advance();
+                match self.current() {
+                    Some(Token::Proc) => self.parse_proc(name),
+                    _ => { 
+                        let expr = self.parse_expr(); 
+                        Stmt::Define(Box::new(Define::Const { name, value: expr })) 
+                    }
+                }
+            }
             Some(tok) => panic!("unexpected token after identifier: {:?}", tok),
             None => panic!("unexpected EOF"),
         }
     }
+
+    fn parse_proc(&mut self, name: String) -> Stmt {
+        
+        panic!();
+    } 
 
     pub fn parse_stmt(&mut self) -> Stmt {
         match self.current() {

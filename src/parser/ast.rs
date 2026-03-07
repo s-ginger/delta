@@ -5,15 +5,8 @@ pub enum Expr {
     Float(f64),
     Str(String),
 
-    BinOp {
-        left: BExpr,
-        right: BExpr,
-        op: OP,
-    },
-    UnaryOP {
-        op: OP,
-        value: BExpr
-    },
+    BinOp { left: BExpr, right: BExpr, op: OP },
+    UnaryOP { op: OP, value: BExpr },
 }
 
 type BExpr = Box<Expr>;
@@ -26,24 +19,48 @@ pub enum OP {
     Div,
 
     AddressOf,
-    Ref
+    Ref,
 }
 
-#[derive(Debug, Clone)] 
+#[derive(Debug, Clone)]
 pub enum Define {
-    Assign { name: String, value: Expr },
-    ShortAssign { name: String,  value: Expr },
-    Procedure { name: String, params: Vec<Expr>, returntype: Vec<Expr>, body: Stmt, }
+    Assign {
+        name: String,
+        value: Expr,
+    },
+    ShortAssign {
+        name: String,
+        value: Expr,
+    },
+    Const {
+        name: String,
+        value: Expr,
+    },
+    DefVar {
+        names: Vec<String>,
+        types: Vec<Type>,
+        value: Expr,
+    },
+    Procedure {
+        name: String,
+        params: Vec<Expr>,
+        returntype: Vec<Expr>,
+        body: Stmt,
+    },
 }
 
+#[derive(Debug, Clone)]
+pub enum Type {
+    Name(String),
+    Ref(Box<Type>),
+}
 
-#[derive(Debug, Clone)] 
+#[derive(Debug, Clone)]
 pub enum Stmt {
     Package(String),
     Import(String),
     Block(Vec<Stmt>),
     Return(Vec<Expr>),
     Define(Box<Define>),
-    StmtExpr(Expr)
+    StmtExpr(Expr),
 }
-
