@@ -2,7 +2,7 @@ use delta::Parser;
 use delta::lexer::{Lexer, Token};
 
 fn main() {
-    let lexer = Lexer::new("{ 1 + 2 } ");
+    let lexer = Lexer::new("{  a := 12 } ");
     let mut tokens: Vec<Token> = vec![];
 
     for t in lexer {

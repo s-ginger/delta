@@ -31,7 +31,7 @@ pub enum OP {
 
 #[derive(Debug, Clone)] 
 pub enum Define {
-    Assign { name: String, typename: Expr, value: Expr, is_comptime: bool },
+    Assign { name: String, value: Expr },
     ShortAssign { name: String,  value: Expr },
     Procedure { name: String, params: Vec<Expr>, returntype: Vec<Expr>, body: Stmt, }
 }

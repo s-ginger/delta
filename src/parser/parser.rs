@@ -1,4 +1,4 @@
-use crate::{Expr, OP, Stmt, Token};
+use crate::{Define, Expr, OP, Stmt, Token};
 
 pub struct Parser {
     pub tokens: Vec<Token>, // динамический массив токенов
@@ -12,6 +12,10 @@ impl Parser {
 
     pub fn current(&self) -> Option<&Token> {
         self.tokens.get(self.pos)
+    }
+
+    pub fn next(&self) -> Option<&Token> {
+        self.tokens.get(self.pos + 1)
     }
 
     pub fn advance(&mut self) {
@@ -28,7 +32,17 @@ impl Parser {
                     let stmt = self.parse_stmt();
                     stmts.push(stmt);
                 }
-                Token::Float(_) | Token::Int(_) => {
+                Token::Ident(_) => {
+                    let stmt = self.parse_ident_variant();
+                    stmts.push(stmt);
+                }
+                Token::Float(_)
+                | Token::Int(_)
+                | Token::StringLiteral(_)
+                | Token::Sub
+                | Token::Ampersand
+                | Token::Caret
+                | Token::Add => {
                     let expr = self.parse_expr();
                     stmts.push(Stmt::StmtExpr(expr));
                 }
@@ -39,6 +53,34 @@ impl Parser {
         }
 
         stmts
+    }
+
+    fn parse_ident_variant(&mut self) -> Stmt {
+        let name = match self.current() {
+            Some(Token::Ident(name)) => name.clone(),
+            Some(tok) => panic!("expected identifier, found {:?}", tok),
+            None => panic!("unexpected EOF"),
+        };
+
+        self.advance(); // пропускаем Ident
+
+        match self.current() {
+            Some(Token::ShortAssign) => {
+                self.advance(); // пропускаем :=
+
+                let expr = self.parse_expr();
+
+                Stmt::Define(Box::new(Define::ShortAssign { name, value: expr }))
+            }
+            Some(Token::Assign) => {
+                self.advance();
+                let expr = self.parse_expr();
+                Stmt::Define(Box::new(Define::Assign { name: name, value: expr }))
+            },
+            
+            Some(tok) => panic!("unexpected token after identifier: {:?}", tok),
+            None => panic!("unexpected EOF"),
+        }
     }
 
     pub fn parse_stmt(&mut self) -> Stmt {
