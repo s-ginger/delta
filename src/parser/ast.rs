@@ -7,6 +7,10 @@ pub enum Expr {
 
     BinOp { left: BExpr, right: BExpr, op: OP },
     UnaryOP { op: OP, value: BExpr },
+    Call {
+        name: String,
+        params: Vec<Expr>
+    }
 }
 
 type BExpr = Box<Expr>;
@@ -47,6 +51,15 @@ pub enum Define {
         returntype: Vec<Expr>,
         body: Stmt,
     },
+    Struct {
+        name: String,
+        params: Box<Define>,
+        
+    },
+    Unions {
+        name: String,
+        params: Box<Define>,
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -56,56 +56,96 @@ impl Parser {
     }
 
     fn parse_ident_variant(&mut self) -> Stmt {
-        let name = match self.current() {
-            Some(Token::Ident(name)) => name.clone(),
+        let mut names = Vec::new();
+
+        // первое имя
+        match self.current() {
+            Some(Token::Ident(name)) => names.push(name.clone()),
             Some(tok) => panic!("expected identifier, found {:?}", tok),
             None => panic!("unexpected EOF"),
-        };
+        }
 
-        self.advance(); // пропускаем Ident
+        self.advance();
+
+        // собираем a, b, c
+        while let Some(Token::Comma) = self.current() {
+            self.advance();
+
+            match self.current() {
+                Some(Token::Ident(name)) => {
+                    names.push(name.clone());
+                    self.advance();
+                }
+                tok => panic!("expected identifier after comma, found {:?}", tok),
+            }
+        }
 
         match self.current() {
             Some(Token::ShortAssign) => {
-                self.advance(); // пропускаем :=
-
-                let expr = self.parse_expr();
-
-                Stmt::Define(Box::new(Define::ShortAssign { name, value: expr }))
-            }
-            Some(Token::Assign) => {
                 self.advance();
+
                 let expr = self.parse_expr();
-                Stmt::Define(Box::new(Define::Assign {
-                    name: name,
+
+                if names.len() != 1 {
+                    panic!(":= supports only one variable");
+                }
+
+                Stmt::Define(Box::new(Define::ShortAssign {
+                    name: names.remove(0),
                     value: expr,
                 }))
             }
+
+            Some(Token::Assign) => {
+                self.advance();
+
+                let expr = self.parse_expr();
+
+                if names.len() != 1 {
+                    panic!("= assignment supports only one variable");
+                }
+
+                Stmt::Define(Box::new(Define::Assign {
+                    name: names.remove(0),
+                    value: expr,
+                }))
+            }
+
             Some(Token::Colon) => {
                 self.advance();
+
                 let typename = self.parse_type();
 
                 match self.current() {
                     Some(Token::Assign) => {
-                        self.advance(); // ← ВОТ ЭТОГО НЕ ХВАТАЕТ
+                        self.advance();
 
                         let expr = self.parse_expr();
 
                         Stmt::Define(Box::new(Define::DefVar {
-                            names: vec![name],
+                            names,
                             types: vec![typename],
                             value: Some(expr),
                         }))
                     }
 
                     _ => Stmt::Define(Box::new(Define::DefVar {
-                        names: vec![name],
+                        names,
                         types: vec![typename],
                         value: None,
                     })),
                 }
             }
+
             Some(Token::ColonColon) => {
+                if names.len() != 1 {
+                    panic!("const/proc supports only one name");
+                }
+
+                let name = names.remove(0);
+
                 self.advance();
+
                 match self.current() {
                     Some(Token::Proc) => self.parse_proc(name),
                     _ => {
@@ -114,7 +154,8 @@ impl Parser {
                     }
                 }
             }
-            Some(tok) => panic!("unexpected token after identifier: {:?}", tok),
+
+            Some(tok) => panic!("unexpected token after identifier list: {:?}", tok),
             None => panic!("unexpected EOF"),
         }
     }
