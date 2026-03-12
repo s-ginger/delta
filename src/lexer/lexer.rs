@@ -31,6 +31,15 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn next_token(&mut self) -> Token {
+        
+        while let Some(c) = self.peek() {
+            if c.is_whitespace() && c != '\n' {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+
         let start = self.pos;
 
         let c = match self.advance() {
@@ -38,15 +47,9 @@ impl<'a> Lexer<'a> {
             None => return self.make_token(TokenKind::EndOfFile, start),
         };
 
+
         match c {
             '\n' => self.make_token(TokenKind::NewLine, start),
-
-            ' ' | '\t' | '\r' => {
-                while matches!(self.peek(), Some(' ' | '\t' | '\r')) {
-                    self.advance();
-                }
-                self.make_token(TokenKind::Whitespace, start)
-            }
 
             '+' => self.make_token(TokenKind::Add, start),
 

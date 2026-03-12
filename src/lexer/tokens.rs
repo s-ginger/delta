@@ -61,7 +61,6 @@ pub enum TokenKind {
 
     Comment,
     BlockComment,
-    Whitespace,
 
     NewLine,
     EndOfFile,

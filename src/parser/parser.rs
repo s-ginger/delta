@@ -30,10 +30,57 @@ impl<'a> Parser<'a> {
     }
 
     /// Новые строки пропускаем
+    #[allow(dead_code)]
     fn skip_newlines(&mut self) {
         while self.cur.kind == TokenKind::NewLine {
             self.next();
         }
+    }
+
+    pub fn parse_expr(&mut self) -> Expr {
+        let mut expr = self.parse_term();
+
+        while matches!(self.cur.kind, TokenKind::Add | TokenKind::Sub) {
+            let op = match self.cur.kind {
+                TokenKind::Add => Op::Add,
+                TokenKind::Sub => Op::Sub,
+                _ => unreachable!(),
+            };
+
+            self.next(); // съесть оператор
+            let right = self.parse_term(); // правый операнд
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                op,
+                right: Box::new(right),
+            };
+        }
+
+        expr
+    }
+
+    pub fn parse_term(&mut self) -> Expr {
+        // сначала левый операнд
+        let mut expr = self.parse_unary();
+
+        // пока текущий токен * или /
+        while matches!(self.cur.kind, TokenKind::Mul | TokenKind::Div) {
+            let op = match self.cur.kind {
+                TokenKind::Mul => Op::Mul,
+                TokenKind::Div => Op::Div,
+                _ => unreachable!(),
+            };
+
+            self.next(); // съесть оператор
+            let right = self.parse_unary(); // правый операнд
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                op,
+                right: Box::new(right),
+            };
+        }
+
+        expr
     }
 
     pub fn parse_unary(&mut self) -> Expr {
@@ -74,18 +121,73 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            _ => self.parse_primary(),
+            _ => self.parse_call(),
         }
+    }
+
+    pub fn parse_call(&mut self) -> Expr {
+        // сначала парсим primary
+        let mut expr = self.parse_primary();
+
+        // пока идёт '(' — это вызов функции
+        while self.check(TokenKind::LParen) {
+            self.next(); // съесть '('
+            let mut args = Vec::new();
+
+            if !self.check(TokenKind::RParen) {
+                loop {
+                    args.push(self.parse_expr()); // аргумент — любое выражение
+                    if self.check(TokenKind::Comma) {
+                        self.next(); // съесть ','
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            self.expect(TokenKind::RParen); // ожидание ')'
+
+            expr = Expr::Call {
+                func: Box::new(expr),
+                args,
+            };
+        }
+
+        expr
     }
 
     pub fn parse_primary(&mut self) -> Expr {
         match self.cur.kind.clone() {
-            TokenKind::Ident(name) => Expr::Ident(name),
-            TokenKind::Int(i) => Expr::Int(i),
-            TokenKind::Float(f) => Expr::Float(f),
-            TokenKind::StringLiteral(string) => Expr::Str(string),
-            TokenKind::CharLiteral(char) => Expr::Char(char),
-            _ => panic!("unexpected token \n {:?}:{:?}", self.cur.span.start, self.cur.span.end),
+            TokenKind::Ident(name) => {
+                self.next();
+                Expr::Ident(name)
+            }
+            TokenKind::Int(i) => {
+                self.next();
+                Expr::Int(i)
+            }
+            TokenKind::Float(f) => {
+                self.next();
+                Expr::Float(f)
+            }
+            TokenKind::StringLiteral(s) => {
+                self.next();
+                Expr::Str(s)
+            }
+            TokenKind::CharLiteral(c) => {
+                self.next();
+                Expr::Char(c)
+            }
+            TokenKind::LParen => {
+                self.next(); // съесть '('
+                let expr = self.parse_expr();
+                self.expect(TokenKind::RParen); // съесть ')'
+                expr // НЕ вызываем self.next() здесь
+            }
+            _ => panic!(
+                "unexpected token {:?}:{:?}",
+                self.cur.span.start, self.cur.span.end
+            ),
         }
     }
 }

@@ -13,12 +13,6 @@ mod tests {
             if tok.kind == TokenKind::EndOfFile {
                 break;
             }
-
-            // пропускаем whitespace чтобы тесты были проще
-            if tok.kind == TokenKind::Whitespace {
-                continue;
-            }
-
             tokens.push(tok.kind);
         }
 
