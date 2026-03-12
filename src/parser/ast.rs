@@ -1,79 +1,132 @@
+
 #[derive(Debug, Clone)]
 pub enum Expr {
     Ident(String),
-    Number(i64),
+    Int(i64),
     Float(f64),
     Str(String),
+    Char(char),
 
-    BinOp { left: BExpr, right: BExpr, op: OP },
-    UnaryOP { op: OP, value: BExpr },
+    Binary {
+        left: Box<Expr>,
+        op: Op,
+        right: Box<Expr>,
+    },
+
+    Unary {
+        op: Op,
+        expr: Box<Expr>,
+    },
+
     Call {
-        name: String,
-        params: Vec<Expr>
-    }
+        func: Box<Expr>,
+        args: Vec<Expr>,
+    },
 }
 
-type BExpr = Box<Expr>;
-
 #[derive(Debug, Clone)]
-pub enum OP {
-    Plus,
-    Minus,
+pub enum Op {
+    Add,
+    Sub,
     Mul,
     Div,
-
     AddressOf,
-    Ref,
+    Deref,
+}
+
+
+#[derive(Debug, Clone)]
+pub enum Type {
+    // пользовательские типы
+    Named(String),
+
+    // целые
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+
+    // float
+    F32,
+    F64,
+
+    // логический
+    Bool,
+
+    // символ и строка
+    Char,
+    String,
+
+    // специальный
+    Void,
+    Never, // !
+
+    // контейнеры
+    Array(usize, Box<Type>),
+    Slice(Box<Type>),
+
+    // указатели
+    Ptr(Box<Type>),
+
+    // функции
+    Proc(Vec<Type>, Box<Type>), // args -> return
 }
 
 #[derive(Debug, Clone)]
-pub enum Define {
-    Assign {
-        name: String,
-        value: Expr,
+pub enum Decl {
+    Var {
+        names: Vec<String>,
+        ty: Option<Type>,
+        value: Option<Expr>,
     },
-    ShortAssign {
-        name: String,
-        value: Expr,
-    },
+
     Const {
         name: String,
         value: Expr,
     },
-    DefVar {
-        names: Vec<String>,
-        types: Vec<Type>,
-        value: Option<Expr>,
-    },
-    Procedure {
+
+    Proc {
         name: String,
-        params: Box<Define>,
-        returntype: Vec<Expr>,
+        params: Vec<Field>,
+        returns: Vec<Type>,
         body: Stmt,
     },
+
     Struct {
         name: String,
-        params: Box<Define>,
-        
+        fields: Vec<Field>,
     },
-    Unions {
+
+    Union {
         name: String,
-        params: Box<Define>,
-    }
+        fields: Vec<Field>,
+    },
 }
 
 #[derive(Debug, Clone)]
-pub enum Type {
-    Name(String),
-    Ref(Box<Type>),
+pub struct Field {
+    pub name: String,
+    pub ty: Type,
 }
+
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
     Package(String),
+
     Import(String),
+
     Block(Vec<Stmt>),
+
     Return(Vec<Expr>),
-    Define(Box<Define>),
-    StmtExpr(Expr),
+
+    Decl(Box<Decl>),
+
+    Expr(Expr),
 }

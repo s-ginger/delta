@@ -1,94 +1,81 @@
-use logos::Logos;
-
-/// All tokens produced by the lexer.  New keywords or operators can be added here.
-#[derive(Logos, Debug, PartialEq, Clone)]
-pub enum Token {
-    // keywords
-    #[token("package")]
-    Package,
-    #[token("import")]
-    Import,
-    #[token("proc")]
+#[derive(Debug, Clone, PartialEq)]
+pub enum TokenKind {
+    Package(String),
+    Import(String),
     Proc,
-    #[token("use")]
-    Use,
-    #[token("return")]
     Return,
-    #[token("assert")]
-    Assert,
-    #[token("distinct")]
-    Distinct,
+    Struct,
+    Union,
 
-    // operators and punctuation
-    #[token("+")]
+    If,
+    Else,
+    While,
+    For,
+
     Add,
-    #[token("-")]
     Sub,
-    #[token("*")]
     Mul,
-    #[token("/")]
     Div,
 
-    #[token(":=")]
     ShortAssign,
-    #[token("==")]
-    Eq,
-    #[token("=")]
     Assign,
-    #[token("::")]
-    ColonColon,
-    #[token("->")]
-    Arrow,
-    #[token(":")]
+
+    Eq,        // ==
+    Not,       // !
+    NotEq,     // !=
+    GreaterEq, // >=
+    LessEq,    // <=
+    Greater,   // >
+    Less,      // <
+
+    And, // &&
+    Or,  // ||
+
     Colon,
-    #[token(";")]
+    ColonColon,
+
+    Arrow,
     Semicolon,
-    #[token(",")]
+
     Comma,
-    #[token(".")]
     Dot,
 
-    #[token("{")]
     LBrace,
-    #[token("}")]
     RBrace,
-    #[token("(")]
+
     LParen,
-    #[token(")")]
     RParen,
-    #[token("[")]
+
     LBracket,
-    #[token("]")]
     RBracket,
 
-    #[token("&")]
-    Ampersand,
-    #[token("^")]
-    Caret,
+    Ampersand, // &
+    Caret,     // ^
 
-    // literal tokens
-    #[regex(r"[0-9]+\.[0-9]+", |lex| lex.slice().parse::<f64>().ok())]
     Float(f64),
-
-    #[regex(r"[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
     Int(i64),
-    
-    #[regex(r#""([^"\\]|\\.)*""#, |lex| {
-        let slice = lex.slice();
-        Some(slice[1..slice.len()-1].to_string())
-    })]
     StringLiteral(String),
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| { lex.slice().to_string() })]
+    CharLiteral(char),
+
     Ident(String),
 
-    // comments and whitespace are skipped
-    #[regex(r"//[^\n]*", logos::skip, allow_greedy = true)]
     Comment,
-    #[regex(r"/\*([^*]|\*[^/])*\*/", logos::skip, allow_greedy = true)]
     BlockComment,
-    #[regex(r"[ \t\n\r]+", logos::skip)]
     Whitespace,
 
-    // fallback error token (logos derives this automatically)
+    NewLine,
+    EndOfFile,
     Error,
+}
+
+#[derive(Debug, Clone)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
 }

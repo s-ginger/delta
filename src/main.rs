@@ -1,19 +1,14 @@
-use delta::Parser;
-use delta::lexer::{Lexer, Token};
+// use delta::Parser;
+use delta::*;
+
 
 fn main() {
-    let lexer = Lexer::new("package main \n n, m: int ");
-    let mut tokens: Vec<Token> = vec![];
+//     let src = r#"main()"#;
 
-    for t in lexer {
-        tokens.push(t);
-    }
+//     let lexer = Lexer::new(src);
+//     let mut parser = Parser::new(lexer);
 
-    println!("{:#?}", tokens);
+//     let ast = parser.parse_program();
 
-    let mut parser = Parser::new(tokens);
-
-    let stmt = parser.parse_stmts();
-
-    println!("\n{:#?}", stmt);
+//     println!("{:#?}", ast);
 }
