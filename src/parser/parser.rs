@@ -64,7 +64,10 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::Ident(_) => self.parse_ident_decl(),
-            _ => panic!(),
+            _ => {
+                let expr = self.parse_expr();
+                Stmt::Expr(expr)
+            },
         }
     }
 

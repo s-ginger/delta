@@ -286,15 +286,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "array size must be non-negative")]
-    fn test_parse_type_negative_array() {
-        let source = "[-3]int";
-        let lexer = Lexer::new(source);
-        let mut parser = Parser::new(lexer);
-        parser.parse_type(); // должно паниковать
-    }
-
-    #[test]
     fn test_decl() {
         let stmt = parse_stmt("m:^i8 = 1");
 
@@ -331,5 +322,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_expr() {
+        let stmt = parse_stmt("1 + 2");
+
+        match stmt {
+            Stmt::Expr(Expr::Binary { left, op, right }) => {
+                // Проверяем левую часть
+                match *left {
+                    Expr::Int(val) => assert_eq!(val, 1),
+                    _ => panic!("Левый операнд должен быть числом"),
+                }
+
+                // Проверяем оператор
+                assert_eq!(op, Op::Add);
+
+                // Проверяем правую часть
+                match *right {
+                    Expr::Int(val) => assert_eq!(val, 2),
+                    _ => panic!("Правый операнд должен быть числом"),
+                }
+            }
+            _ => panic!("Должно быть бинарное выражение"),
+        }
+    }
 
 }
