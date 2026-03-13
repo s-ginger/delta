@@ -63,17 +63,39 @@ impl<'a> Parser<'a> {
                     )
                 }
             }
-            TokenKind::Ident(_) => self.parse_ident(),
+            TokenKind::Ident(_) => self.parse_ident_decl(),
             _ => panic!(),
         }
     }
 
-    fn parse_ident(&mut self) -> Stmt {
-        match self.cur.kind.clone() {
-            _ => panic!(
-                "unexpected token {:?} {:?}:{:?}",
-                self.cur, self.cur.span.start, self.cur.span.end
-            ),
+    fn parse_ident_decl(&mut self) -> Stmt {
+        if let TokenKind::Ident(name) = self.cur.kind.clone() {
+            let var_name = name;
+            self.next(); // съели идентификатор
+
+            // ожидаем двоеточие
+            if self.cur.kind != TokenKind::Colon {
+                panic!("expected ':' after identifier");
+            }
+            self.next(); // съели ':'
+
+            // парсим тип
+            let ty = Some(self.parse_type());
+
+            let value = if self.cur.kind == TokenKind::Assign {
+                self.next(); // съели '='
+                Some(self.parse_expr())
+            } else {
+                None
+            };
+
+            Stmt::Decl(Box::new(Decl::Var {
+                names: vec![var_name],
+                ty,
+                value,
+            }))
+        } else {
+            panic!("expected identifier, found {:?}", self.cur);
         }
     }
 

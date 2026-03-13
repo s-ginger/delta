@@ -22,7 +22,6 @@ mod tests {
         parser.parse_type()
     }
 
-
     #[test]
     fn parse_int() {
         let expr = parse("42");
@@ -67,7 +66,10 @@ mod tests {
         let expr = parse("+&x");
         match expr {
             Expr::Unary { op: Op::Add, expr } => match *expr {
-                Expr::Unary { op: Op::AddressOf, expr } => match *expr {
+                Expr::Unary {
+                    op: Op::AddressOf,
+                    expr,
+                } => match *expr {
                     Expr::Ident(name) => assert_eq!(name, "x"),
                     _ => panic!("expected Expr::Ident"),
                 },
@@ -82,25 +84,34 @@ mod tests {
         let expr = parse("2 + 3 * 4 - 5");
         // AST будет: ((2 + (3 * 4)) - 5)
         match expr {
-            Expr::Binary { op: Op::Sub, left, right } => {
-                match (*left, *right) {
+            Expr::Binary {
+                op: Op::Sub,
+                left,
+                right,
+            } => match (*left, *right) {
+                (
+                    Expr::Binary {
+                        op: Op::Add,
+                        left: l2,
+                        right: r2,
+                    },
+                    Expr::Int(5),
+                ) => match (*l2, *r2) {
                     (
-                        Expr::Binary { op: Op::Add, left: l2, right: r2 },
-                        Expr::Int(5)
-                    ) => {
-                        match (*l2, *r2) {
-                            (Expr::Int(2), Expr::Binary { op: Op::Mul, left: l3, right: r3 }) => {
-                                match (*l3, *r3) {
-                                    (Expr::Int(3), Expr::Int(4)) => {}
-                                    _ => panic!("expected 3*4"),
-                                }
-                            }
-                            _ => panic!("expected 2+(3*4)"),
-                        }
-                    }
-                    _ => panic!("expected (2+(3*4))-5"),
-                }
-            }
+                        Expr::Int(2),
+                        Expr::Binary {
+                            op: Op::Mul,
+                            left: l3,
+                            right: r3,
+                        },
+                    ) => match (*l3, *r3) {
+                        (Expr::Int(3), Expr::Int(4)) => {}
+                        _ => panic!("expected 3*4"),
+                    },
+                    _ => panic!("expected 2+(3*4)"),
+                },
+                _ => panic!("expected (2+(3*4))-5"),
+            },
             _ => panic!("expected binary subtraction"),
         }
     }
@@ -110,20 +121,24 @@ mod tests {
         let expr = parse("(2 + 3) * 4");
         // AST: ((2 + 3) * 4)
         match expr {
-            Expr::Binary { op: Op::Mul, left, right } => {
-                match (*left, *right) {
-                    (
-                        Expr::Binary { op: Op::Add, left: l2, right: r2 },
-                        Expr::Int(4)
-                    ) => {
-                        match (*l2, *r2) {
-                            (Expr::Int(2), Expr::Int(3)) => {}
-                            _ => panic!("expected (2+3)"),
-                        }
-                    }
-                    _ => panic!("expected (2+3)*4"),
-                }
-            }
+            Expr::Binary {
+                op: Op::Mul,
+                left,
+                right,
+            } => match (*left, *right) {
+                (
+                    Expr::Binary {
+                        op: Op::Add,
+                        left: l2,
+                        right: r2,
+                    },
+                    Expr::Int(4),
+                ) => match (*l2, *r2) {
+                    (Expr::Int(2), Expr::Int(3)) => {}
+                    _ => panic!("expected (2+3)"),
+                },
+                _ => panic!("expected (2+3)*4"),
+            },
             _ => panic!("expected binary multiplication"),
         }
     }
@@ -161,12 +176,14 @@ mod tests {
                 }
                 // 2+3
                 match &args[1] {
-                    Expr::Binary { op: Op::Add, left, right } => {
-                        match (&**left, &**right) {
-                            (Expr::Int(2), Expr::Int(3)) => {}
-                            _ => panic!("expected 2+3"),
-                        }
-                    }
+                    Expr::Binary {
+                        op: Op::Add,
+                        left,
+                        right,
+                    } => match (&**left, &**right) {
+                        (Expr::Int(2), Expr::Int(3)) => {}
+                        _ => panic!("expected 2+3"),
+                    },
                     _ => panic!("expected 2+3"),
                 }
                 // x
@@ -192,7 +209,10 @@ mod tests {
 
                 // g(1)
                 match &args[0] {
-                    Expr::Call { func: g_func, args: g_args } => {
+                    Expr::Call {
+                        func: g_func,
+                        args: g_args,
+                    } => {
                         match **g_func {
                             Expr::Ident(ref n) => assert_eq!(n, "g"),
                             _ => panic!("expected g"),
@@ -208,7 +228,10 @@ mod tests {
 
                 // h(x)
                 match &args[1] {
-                    Expr::Call { func: h_func, args: h_args } => {
+                    Expr::Call {
+                        func: h_func,
+                        args: h_args,
+                    } => {
                         match **h_func {
                             Expr::Ident(ref n) => assert_eq!(n, "h"),
                             _ => panic!("expected h"),
@@ -235,10 +258,9 @@ mod tests {
                     panic!("unexpected package name")
                 }
             }
-            _ => panic!("stmt is null")
+            _ => panic!("stmt is null"),
         }
 
-    
         let stmt2 = parse_stmt("import \"main\"");
         match stmt2 {
             Stmt::Import(path) => {
@@ -246,22 +268,17 @@ mod tests {
                     panic!("unexpected import name")
                 }
             }
-            _ => panic!("stmt is null")
+            _ => panic!("stmt is null"),
         }
     }
 
-    
     #[test]
     fn test_parse_type_array_pointer() {
-  
         // Парсим тип
         let ty = parse_type("[5]^i8");
 
         // Ожидаемый AST
-        let expected = Type::Array(
-            5,
-            Box::new(Type::Ptr(Box::new(Type::I8)))
-        );
+        let expected = Type::Array(5, Box::new(Type::Ptr(Box::new(Type::I8))));
 
         println!("{:?}", ty);
         // Сравниваем
@@ -277,6 +294,42 @@ mod tests {
         parser.parse_type(); // должно паниковать
     }
 
+    #[test]
+    fn test_decl() {
+        let stmt = parse_stmt("m:^i8 = 1");
+
+        match stmt {
+            Stmt::Decl(decl_box) => {
+                let decl = *decl_box; // распаковали Box на stack
+                match decl {
+                    Decl::Var { names, ty, value } => {
+                        assert_eq!(names.len(), 1);
+                        assert_eq!(names[0], "m");
+
+                        // проверяем тип
+                        if let Some(Type::Ptr(inner)) = ty {
+                            // inner: &Box<Type> если ty: &Option<Type>, или Box<Type> если ty: Option<Type>
+                            // Можно распаковать
+                            match *inner {
+                                Type::I8 => println!("it's a pointer to i8"),
+                                _ => panic!("expected pointer to i8"),
+                            }
+                        } else {
+                            panic!("expected Some(Type::Ptr)");
+                        }
+
+                        // проверяем значение
+                        match value {
+                            Some(Expr::Int(v)) => assert_eq!(v, 1),
+                            _ => panic!("expected Expr::Int(1)"),
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            _ => panic!("expected Stmt::Decl"),
+        }
+    }
 
 
 }
