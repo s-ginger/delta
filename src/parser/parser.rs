@@ -37,6 +37,83 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn parse_stmt(&mut self) -> Stmt {
+        match self.cur.kind.clone() {
+            TokenKind::Package => {
+                self.next();
+                let name = self.parse_primary();
+                if let Expr::Ident(name) = name {
+                    Stmt::Package(name)
+                } else {
+                    panic!(
+                        "unexpected token {:?} {:?}:{:?}",
+                        self.cur, self.cur.span.start, self.cur.span.end
+                    )
+                }
+            }
+            TokenKind::Import => {
+                self.next();
+                let name = self.parse_primary();
+                if let Expr::Str(name) = name {
+                    Stmt::Import(name)
+                } else {
+                    panic!(
+                        "unexpected token {:?} {:?}:{:?}",
+                        self.cur, self.cur.span.start, self.cur.span.end
+                    )
+                }
+            }
+            TokenKind::Ident(_) => self.parse_ident(),
+            _ => panic!(),
+        }
+    }
+
+    fn parse_ident(&mut self) -> Stmt {
+        match self.cur.kind.clone() {
+            _ => panic!(
+                "unexpected token {:?} {:?}:{:?}",
+                self.cur, self.cur.span.start, self.cur.span.end
+            ),
+        }
+    }
+
+    pub fn parse_type(&mut self) -> Type {
+        match self.cur.kind.clone() {
+            // Указатель ^Type
+            TokenKind::Caret => {
+                self.next();
+                let inner = self.parse_type();
+                Type::Ptr(Box::new(inner))
+            }
+
+            // Массив или срез [N]Type или []Type
+            TokenKind::LBracket => {
+                self.next(); // съесть '['
+                let size: usize = match self.cur.kind.clone() {
+                    TokenKind::Int(n) => {
+                        self.next(); // съесть число
+                        n as usize // безопасное преобразование
+                    }
+                    _ => panic!("expected array size"), // срез []
+                };
+                self.expect(TokenKind::RBracket); // съесть ']'
+                let inner = self.parse_type();
+                Type::Array(size, Box::new(inner))
+            }
+
+            // Идентификатор типа
+            TokenKind::Ident(name) => {
+                self.next();
+                Type::from_str(&name)
+            }
+
+            _ => panic!(
+                "unexpected token in type {:?} {:?}:{:?}",
+                self.cur.kind, self.cur.span.start, self.cur.span.end
+            ),
+        }
+    }
+
     pub fn parse_expr(&mut self) -> Expr {
         let mut expr = self.parse_term();
 

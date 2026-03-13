@@ -10,6 +10,19 @@ mod tests {
         parser.parse_expr()
     }
 
+    fn parse_stmt(src: &str) -> Stmt {
+        let lexer = Lexer::new(src);
+        let mut parser = Parser::new(lexer);
+        parser.parse_stmt()
+    }
+
+    fn parse_type(src: &str) -> Type {
+        let lexer = Lexer::new(src);
+        let mut parser = Parser::new(lexer);
+        parser.parse_type()
+    }
+
+
     #[test]
     fn parse_int() {
         let expr = parse("42");
@@ -212,4 +225,58 @@ mod tests {
             _ => panic!("expected f(...)"),
         }
     }
+
+    #[test]
+    fn parse_import_package_stmt() {
+        let stmt = parse_stmt("package main");
+        match stmt {
+            Stmt::Package(name) => {
+                if name != "main" {
+                    panic!("unexpected package name")
+                }
+            }
+            _ => panic!("stmt is null")
+        }
+
+    
+        let stmt2 = parse_stmt("import \"main\"");
+        match stmt2 {
+            Stmt::Import(path) => {
+                if path != "main" {
+                    panic!("unexpected import name")
+                }
+            }
+            _ => panic!("stmt is null")
+        }
+    }
+
+    
+    #[test]
+    fn test_parse_type_array_pointer() {
+  
+        // Парсим тип
+        let ty = parse_type("[5]^i8");
+
+        // Ожидаемый AST
+        let expected = Type::Array(
+            5,
+            Box::new(Type::Ptr(Box::new(Type::I8)))
+        );
+
+        println!("{:?}", ty);
+        // Сравниваем
+        assert_eq!(format!("{:?}", ty), format!("{:?}", expected));
+    }
+
+    #[test]
+    #[should_panic(expected = "array size must be non-negative")]
+    fn test_parse_type_negative_array() {
+        let source = "[-3]int";
+        let lexer = Lexer::new(source);
+        let mut parser = Parser::new(lexer);
+        parser.parse_type(); // должно паниковать
+    }
+
+
+
 }

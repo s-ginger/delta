@@ -1,7 +1,7 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
-    Package(String),
-    Import(String),
+    Package,
+    Import,
     Proc,
     Return,
     Struct,

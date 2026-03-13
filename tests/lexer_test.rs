@@ -191,8 +191,10 @@ mod tests {
 
     #[test]
     fn test_struct_union() {
-        let tokens = lex_all("struct union");
+        let tokens = lex_all("package main struct union");
 
-        assert_eq!(tokens, vec![TokenKind::Struct, TokenKind::Union]);
+        assert_eq!(tokens, vec![TokenKind::Package, TokenKind::Ident("main".to_string()), TokenKind::Struct, TokenKind::Union]);
     }
+
+
 }

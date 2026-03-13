@@ -268,8 +268,8 @@ impl<'a> Lexer<'a> {
         let text = &self.src[start..self.pos];
 
         let kind = match text {
-            "package" => TokenKind::Package(text.into()),
-            "import" => TokenKind::Import(text.into()),
+            "package" => TokenKind::Package,
+            "import" => TokenKind::Import,
             "proc" => TokenKind::Proc,
             "return" => TokenKind::Return,
             "struct" => TokenKind::Struct,
