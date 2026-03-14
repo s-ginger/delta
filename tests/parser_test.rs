@@ -347,4 +347,32 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_short_assign() {
+        let stmt = parse_stmt("m := 12");
+
+        match stmt {
+            Stmt::Decl(box_) => {
+                match *box_ {
+                    Decl::Var { names, ty, value } => {
+                        assert_eq!(names.len(), 1);
+                        assert_eq!(names[0], "m");
+
+                        if let Some(Type::I32) = ty {
+                        } else {
+                            panic!("expected Some(Type::Ptr)");
+                        }
+
+                        // проверяем значение
+                        match value {
+                            Some(Expr::Int(v)) => assert_eq!(v, 12),
+                            _ => panic!("expected Expr::Int(12)"),
+                        }
+                    }
+                    _ => panic!(),
+                }
+            }
+            _ => panic!(),
+        }
+    }
 }

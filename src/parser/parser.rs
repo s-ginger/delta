@@ -67,7 +67,7 @@ impl<'a> Parser<'a> {
             _ => {
                 let expr = self.parse_expr();
                 Stmt::Expr(expr)
-            },
+            }
         }
     }
 
@@ -76,17 +76,18 @@ impl<'a> Parser<'a> {
             let var_name = name;
             self.next(); // съели идентификатор
 
-            // ожидаем двоеточие
-            if self.cur.kind != TokenKind::Colon {
-                panic!("expected ':' after identifier");
+            // короткое присваивание
+            if self.cur.kind == TokenKind::ShortAssign {
+                return self.parse_short_assign(var_name);
             }
-            self.next(); // съели ':'
 
-            // парсим тип
+            // обычное объявление
+            self.expect(TokenKind::Colon);
+
             let ty = Some(self.parse_type());
 
             let value = if self.cur.kind == TokenKind::Assign {
-                self.next(); // съели '='
+                self.next();
                 Some(self.parse_expr())
             } else {
                 None
@@ -100,6 +101,34 @@ impl<'a> Parser<'a> {
         } else {
             panic!("expected identifier, found {:?}", self.cur);
         }
+    }
+
+    fn parse_short_assign(&mut self, name: String) -> Stmt {
+        self.expect(TokenKind::ShortAssign);
+
+        let value = self.parse_expr();
+
+        let ty = match &value {
+            Expr::Int(_) => Some(Type::I32),
+            Expr::Float(_) => Some(Type::F64),
+            Expr::Str(_) => Some(Type::String),
+            Expr::Char(_) => Some(Type::Char),
+            _ => None,
+        };
+
+        Stmt::Decl(Box::new(Decl::Var {
+            names: vec![name],
+            ty,
+            value: Some(value),
+        }))
+    }
+
+    fn parse_const() {
+
+    }
+
+    fn parse_proc() {
+        
     }
 
     pub fn parse_type(&mut self) -> Type {
