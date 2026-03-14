@@ -2,10 +2,10 @@ package main
 
 import "fmt"
 
-
-
-proc main() {
-
+fn main() {
+    var a = 10
+    println("hello world")
 }
+
 
 

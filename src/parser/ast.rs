@@ -35,7 +35,7 @@ pub enum Op {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     // пользовательские типы
     Named(String, Option<Box<Type>>),
@@ -75,7 +75,7 @@ pub enum Type {
     Ptr(Box<Type>),
 
     // функции
-    Proc(Vec<Type>, Box<Type>), // args -> return
+    Func(Vec<Type>, Box<Type>), // args -> return
 }
 
 impl Type {
@@ -112,10 +112,11 @@ pub enum Decl {
 
     Const {
         name: String,
+        ty: Option<Type>,
         value: Expr,
     },
 
-    Proc {
+    Func {
         name: String,
         params: Vec<Field>,
         returns: Vec<Type>,

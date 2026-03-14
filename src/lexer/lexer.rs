@@ -270,14 +270,22 @@ impl<'a> Lexer<'a> {
         let kind = match text {
             "package" => TokenKind::Package,
             "import" => TokenKind::Import,
-            "proc" => TokenKind::Proc,
+
+            "fn" => TokenKind::Fn,
+            "var" => TokenKind::Var, 
+            "const" => TokenKind::Const, 
+            "type" => TokenKind::Type,
+
             "return" => TokenKind::Return,
             "struct" => TokenKind::Struct,
             "union" => TokenKind::Union,
+
             "if" => TokenKind::If,
             "else" => TokenKind::Else,
             "while" => TokenKind::While,
             "for" => TokenKind::For,
+            
+            "using" => TokenKind::Using,
             _ => TokenKind::Ident(text.into()),
         };
 

@@ -37,70 +37,104 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn parse_file(&mut self) -> Vec<Stmt> {
+        let mut stmts = Vec::new();
+
+        while self.cur.kind != TokenKind::EndOfFile {
+            self.skip_newlines(); // пропускаем пустые строки
+            if self.cur.kind == TokenKind::EndOfFile {
+                break;
+            }
+            let stmt = self.parse_stmt();
+            stmts.push(stmt);
+        }
+
+        stmts
+    }
+
     pub fn parse_stmt(&mut self) -> Stmt {
+        self.skip_newlines(); // пропуск пустых строк в начале
         match self.cur.kind.clone() {
-            TokenKind::Package => {
+            TokenKind::Var => {
                 self.next();
-                let name = self.parse_primary();
-                if let Expr::Ident(name) = name {
-                    Stmt::Package(name)
+                self.parse_var()
+            }
+            TokenKind::Const => {
+                self.next();
+                self.parse_const()
+            }
+            TokenKind::Fn => {
+                self.next();
+                self.parse_fn()
+            }
+            TokenKind::Ident(name) => {
+                if self.peek.kind == TokenKind::ShortAssign {
+                    self.next(); // съесть идентификатор
+                    self.parse_short_assign(name)
                 } else {
-                    panic!(
-                        "unexpected token {:?} {:?}:{:?}",
-                        self.cur, self.cur.span.start, self.cur.span.end
-                    )
+                    let expr = self.parse_expr();
+                    Stmt::Expr(expr)
                 }
             }
-            TokenKind::Import => {
-                self.next();
-                let name = self.parse_primary();
-                if let Expr::Str(name) = name {
-                    Stmt::Import(name)
-                } else {
-                    panic!(
-                        "unexpected token {:?} {:?}:{:?}",
-                        self.cur, self.cur.span.start, self.cur.span.end
-                    )
-                }
-            }
-            TokenKind::Ident(_) => self.parse_ident_decl(),
-            _ => {
+            TokenKind::Struct => self.parse_struct(),
+            TokenKind::Union => self.parse_union(),
+            TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::StringLiteral(_)
+            | TokenKind::CharLiteral(_) => {
+                // литерал сам по себе — выражение
                 let expr = self.parse_expr();
                 Stmt::Expr(expr)
             }
+            TokenKind::NewLine => {
+                self.skip_newlines();
+                self.parse_stmt() // рекурсивно пропускаем пустые строки
+            }
+            _ => panic!(
+                "unexpected token {:?}:{:?}",
+                self.cur.span.start, self.cur.span.end
+            ),
         }
     }
 
-    fn parse_ident_decl(&mut self) -> Stmt {
-        if let TokenKind::Ident(name) = self.cur.kind.clone() {
-            let var_name = name;
-            self.next(); // съели идентификатор
+    fn parse_var(&mut self) -> Stmt {
+        let mut names = Vec::new();
 
-            // короткое присваивание
-            if self.cur.kind == TokenKind::ShortAssign {
-                return self.parse_short_assign(var_name);
+        // собираем все идентификаторы, разделённые запятой
+        loop {
+            match self.cur.kind.clone() {
+                TokenKind::Ident(n) => {
+                    names.push(n);
+                    self.next();
+                }
+                _ => panic!("expected identifier in var declaration"),
             }
 
-            // обычное объявление
-            self.expect(TokenKind::Colon);
-
-            let ty = Some(self.parse_type());
-
-            let value = if self.cur.kind == TokenKind::Assign {
+            // если следующая запятая — съедаем и продолжаем
+            if self.check(TokenKind::Comma) {
                 self.next();
-                Some(self.parse_expr())
             } else {
-                None
-            };
-
-            Stmt::Decl(Box::new(Decl::Var {
-                names: vec![var_name],
-                ty,
-                value,
-            }))
-        } else {
-            panic!("expected identifier, found {:?}", self.cur);
+                break;
+            }
         }
+
+        // теперь идёт тип или =?
+        let mut ty = None;
+        if matches!(
+            self.cur.kind,
+            TokenKind::Caret | TokenKind::LBracket | TokenKind::Ident(_)
+        ) {
+            ty = Some(self.parse_type());
+        }
+
+        // если есть =
+        let mut value = None;
+        if self.check(TokenKind::Assign) {
+            self.next();
+            value = Some(self.parse_expr());
+        }
+
+        Stmt::Decl(Box::new(Decl::Var { names, ty, value }))
     }
 
     fn parse_short_assign(&mut self, name: String) -> Stmt {
@@ -123,12 +157,196 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn parse_const() {
+    fn parse_const(&mut self) -> Stmt {
+        // Получаем имя константы
+        let name = if let TokenKind::Ident(n) = self.cur.kind.clone() {
+            self.next();
+            n
+        } else {
+            panic!("expected identifier in const declaration");
+        };
 
+        // Опциональный тип
+        let ty = if matches!(
+            self.cur.kind,
+            TokenKind::Caret | TokenKind::LBracket | TokenKind::Ident(_)
+        ) {
+            Some(self.parse_type())
+        } else {
+            None
+        };
+
+        // Должен быть =
+        self.expect(TokenKind::Assign);
+
+        // Значение
+        let value = self.parse_expr();
+
+        Stmt::Decl(Box::new(Decl::Const { name, ty, value }))
     }
 
-    fn parse_proc() {
-        
+    fn parse_fn(&mut self) -> Stmt {
+        // Имя функции
+        let name = if let TokenKind::Ident(n) = self.cur.kind.clone() {
+            self.next();
+            n
+        } else {
+            panic!("expected function name");
+        };
+
+        // Параметры функции
+        let mut params = Vec::new();
+        self.expect(TokenKind::LParen); // '('
+        if !self.check(TokenKind::RParen) {
+            loop {
+                // Имя параметра
+                let param_name = if let TokenKind::Ident(n) = self.cur.kind.clone() {
+                    self.next();
+                    n
+                } else {
+                    panic!("expected parameter name");
+                };
+
+                // Тип параметра
+                let param_type = self.parse_type();
+
+                params.push(Field {
+                    name: param_name,
+                    ty: param_type,
+                });
+
+                if self.check(TokenKind::Comma) {
+                    self.next();
+                } else {
+                    break;
+                }
+            }
+        }
+        self.expect(TokenKind::RParen); // ')'
+
+        // Возвращаемые типы
+        let mut returns = Vec::new();
+        if self.check(TokenKind::LParen) {
+            self.next(); // '('
+            loop {
+                returns.push(self.parse_type());
+                if self.check(TokenKind::Comma) {
+                    self.next();
+                } else {
+                    break;
+                }
+            }
+            self.expect(TokenKind::RParen); // ')'
+        } else if matches!(self.cur.kind, TokenKind::Ident(_)) {
+            returns.push(self.parse_type());
+        }
+
+        // Тело функции
+        let body = self.parse_block();
+
+        Stmt::Decl(Box::new(Decl::Func {
+            name,
+            params,
+            returns,
+            body,
+        }))
+    }
+
+    fn parse_block(&mut self) -> Stmt {
+        self.expect(TokenKind::LBrace); // съесть '{'
+
+        let mut stmts = Vec::new();
+
+        while !self.check(TokenKind::RBrace) {
+            self.skip_newlines(); // пропускаем пустые строки/разделители
+            if self.check(TokenKind::RBrace) {
+                break; // конец блока
+            }
+            let stmt = self.parse_stmt();
+            stmts.push(stmt);
+            self.skip_newlines();
+        }
+
+        self.expect(TokenKind::RBrace); // съесть '}'
+
+        Stmt::Block(stmts)
+    }
+
+    pub fn parse_union(&mut self) -> Stmt {
+        // 1. Съедаем ключевое слово `union`
+        self.expect(TokenKind::Union);
+
+        // 2. Имя объединения
+        let name = if let TokenKind::Ident(n) = self.cur.kind.clone() {
+            self.next();
+            n
+        } else {
+            panic!("expected union name");
+        };
+
+        // 3. Ожидаем '{'
+        self.expect(TokenKind::LBrace);
+
+        // 4. Пропускаем пустые строки перед полями
+        self.skip_newlines();
+
+        // 5. Парсим поля union
+        let fields = self.parse_fields();
+
+        // 6. Пропускаем пустые строки после полей
+        self.skip_newlines();
+
+        // 7. Ожидаем '}'
+        self.expect(TokenKind::RBrace);
+
+        // 8. Возвращаем как объявление union
+        Stmt::Decl(Box::new(Decl::Union { name, fields }))
+    }
+
+    pub fn parse_struct(&mut self) -> Stmt {
+        // 1. Съедаем ключевое слово `struct`
+        self.expect(TokenKind::Struct);
+
+        // 2. Имя структуры
+        let name = if let TokenKind::Ident(n) = self.cur.kind.clone() {
+            self.next();
+            n
+        } else {
+            panic!("expected struct name");
+        };
+
+        // 3. Ожидаем '{'
+        self.expect(TokenKind::LBrace);
+
+        // 4. Пропускаем пустые строки перед полями
+        self.skip_newlines();
+
+        // 5. Парсим поля структуры
+        let fields = self.parse_fields();
+
+        // 6. Пропускаем пустые строки после полей
+        self.skip_newlines();
+
+        // 7. Ожидаем '}'
+        self.expect(TokenKind::RBrace);
+
+        // 8. Возвращаем как объявление структуры
+        Stmt::Decl(Box::new(Decl::Struct { name, fields }))
+    }
+
+    pub fn parse_fields(&mut self) -> Vec<Field> {
+        let mut fields = Vec::new();
+
+        while let TokenKind::Ident(name) = self.cur.kind.clone() {
+            self.next(); // съесть имя поля
+            let ty = self.parse_type(); // читаем тип
+            fields.push(Field { name, ty });
+
+            // Пропускаем новые строки между полями, если есть
+            self.skip_newlines();
+        }
+
+        fields
     }
 
     pub fn parse_type(&mut self) -> Type {

@@ -2,10 +2,15 @@
 pub enum TokenKind {
     Package,
     Import,
-    Proc,
+    Fn,
+    Const,
+    Var,
+    Type,
+
     Return,
     Struct,
     Union,
+    Using,
 
     If,
     Else,
